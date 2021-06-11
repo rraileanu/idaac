@@ -1,4 +1,4 @@
-# IDAAC: Invariant Decoupled Actor-Critic
+# IDAAC: Invariant Decoupled Advantage Actor-Critic
 This is a PyTorch implementation of the methods proposed in
 
 [**Decoupling Value and Policy for Generalization in Reinforcement Learning**](https://arxiv.org/abs/2102.10330) by 
@@ -37,9 +37,7 @@ python setup.py install
 
 
 # Instructions 
-```
-cd idaac
-```
+This repo provides instructions for training IDAAC, DAAC, and PPO on the Procgen benchmark. 
 
 ## Train IDAAC on CoinRun
 ```
