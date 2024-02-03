@@ -84,6 +84,9 @@ class RolloutStorage(object):
             drop_last=True)
      
         for indices in sampler:
+            # New comment from Jason: Code is unchanged here, but shows
+            # Ignoring of last steps observation, return, and value prediction,
+            # this matches logic of +1 tensor sizes above
             obs_batch = self.obs[:-1].view(-1, *self.obs.size()[2:])[indices]
             actions_batch = self.actions.view(-1,
                                             self.actions.size(-1))[indices]
