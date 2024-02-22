@@ -31,12 +31,14 @@ class PPO():
 
         self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
 
-    def update_with_multi_traj(self, rollouts: MultiAgentRolloutBuffer, batch_size=None) -> tuple:
+    def update_with_multi_traj(self, rollouts: MultiAgentRolloutBuffer, batch_size=None,
+                               epoch=None) -> tuple:
         """
         Update the network with multiple trajectories of accumulated data
 
         :param rollouts:
         :param batch_size: (int)
+        :param epoch: (int) (Optional)
         :return:
         """
 
@@ -47,9 +49,10 @@ class PPO():
         num_updates = 0
         traj_len_epoch = 0
 
+        total_steps = rollouts.flatten_and_augment(epoch=epoch, gif_steps=75)
         # number of times data should be trained over per epoch
         for e in range(self.ppo_epoch):
-            for rollout_batch in rollouts.get(batch_size):
+            for rollout_batch in rollouts.get(total_steps, batch_size):
                 obs_batch, actions_batch, old_action_log_probs_batch, value_preds_batch, \
                     adv_targ, return_batch = rollout_batch
 
