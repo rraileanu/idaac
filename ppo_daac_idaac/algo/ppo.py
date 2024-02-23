@@ -50,6 +50,9 @@ class PPO():
         traj_len_epoch = 0
 
         total_steps = rollouts.flatten_and_augment(epoch=epoch, gif_steps=75)
+        if total_steps == 0:
+            return None, None, None, None, None
+
         # number of times data should be trained over per epoch
         for e in range(self.ppo_epoch):
             for rollout_batch in rollouts.get(total_steps, batch_size):
