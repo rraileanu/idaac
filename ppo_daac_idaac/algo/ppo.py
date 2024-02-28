@@ -1,4 +1,6 @@
-import random 
+import random
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -31,14 +33,14 @@ class PPO():
 
         self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
 
-    def update_with_multi_traj(self, rollouts: MultiAgentRolloutBuffer, batch_size=None,
-                               epoch=None) -> tuple:
+    def update_with_multi_traj(self, epoch_obs, epoch_act, epoch_act_log_prob, epoch_val, epoch_adv,
+                               epoch_ret, batch_size=None, total_steps=None) -> tuple:
         """
         Update the network with multiple trajectories of accumulated data
 
         :param rollouts:
-        :param batch_size: (int)
-        :param epoch: (int) (Optional)
+        :param batch_size: (int) (optional)
+        :param total_steps: (int)
         :return:
         """
 
@@ -47,17 +49,37 @@ class PPO():
         action_loss_epoch = 0
         dist_entropy_epoch = 0
         num_updates = 0
-        traj_len_epoch = 0
 
-        total_steps = rollouts.flatten_and_augment(epoch=epoch, gif_steps=75)
-        if total_steps == 0:
-            return None, None, None, None, None
+        def get_batch_idx(total_steps, batch_size):
+            """
+            Function yield batch indexes
+            :param total_steps:
+            :param batch_size:
+            :return:
+            """
+            indices = np.random.permutation(total_steps)
+            # Return everything, don't create mini-batches
+            if batch_size is None:
+                batch_size = total_steps
+
+            start_idx = 0
+            # iterate over all data gathered from rollouts
+            while start_idx < total_steps:
+                yield indices[start_idx: start_idx + batch_size]
+                start_idx += batch_size
 
         # number of times data should be trained over per epoch
         for e in range(self.ppo_epoch):
-            for rollout_batch in rollouts.get(total_steps, batch_size):
-                obs_batch, actions_batch, old_action_log_probs_batch, value_preds_batch, \
-                    adv_targ, return_batch = rollout_batch
+            for batch_idx in get_batch_idx(total_steps, batch_size):
+                obs_batch = epoch_obs[batch_idx]
+                actions_batch = epoch_act[batch_idx]
+                old_action_log_probs_batch = epoch_act_log_prob[batch_idx]
+                value_preds_batch = epoch_val[batch_idx]
+                adv_targ = epoch_adv[batch_idx]
+                return_batch = epoch_ret[batch_idx]
+                #for rollout_batch in rollouts.get(total_steps, batch_size):
+                #    obs_batch, actions_batch, old_action_log_probs_batch, value_preds_batch, \
+                #        adv_targ, return_batch = rollout_batch
 
                 values, action_log_probs, dist_entropy = self.actor_critic.evaluate_actions(
                     obs_batch, actions_batch)
@@ -85,7 +107,6 @@ class PPO():
                                          self.max_grad_norm)
                 self.optimizer.step()
                 num_updates += 1
-                traj_len_epoch += obs_batch.size(dim=0)
 
                 loss_epoch += loss.item()
                 value_loss_epoch += value_loss.item()
@@ -97,7 +118,7 @@ class PPO():
         action_loss_epoch /= num_updates
         dist_entropy_epoch /= num_updates
 
-        return traj_len_epoch, loss_epoch, value_loss_epoch, action_loss_epoch, dist_entropy_epoch
+        return loss_epoch, value_loss_epoch, action_loss_epoch, dist_entropy_epoch
 
     '''
     Old fn to remove
